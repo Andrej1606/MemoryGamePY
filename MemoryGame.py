@@ -2,7 +2,6 @@ import tkinter as tk
 import random
 from tkinter import messagebox
 
-
 class IgraPamćenja:
     def __init__(self, root):
         self.root = root
@@ -107,4 +106,110 @@ class IgraPamćenja:
             sirina = 8
             visina = 4
             font = ("Helvetica", 16, "bold")
+
+        for i in range(self.ukupan_broj_kartica):
+            dugme = tk.Button(
+                self.okvir_karte,
+                text=" ",
+                width=sirina,
+                height=visina,
+                font=font,
+                relief="raised",
+                bg="#ffffff",
+                fg="#333",
+                bd=3,
+                command=lambda idx=i: self.okreni_karticu(idx)
+            )
+            dugme.grid(row=i // velicina, column=i % velicina, padx=4, pady=4)
+            self.dugmad.append(dugme)
+
+        self.dugme_nazad = tk.Button(self.root, text="⬅️ Nazad na izbor nivoa", font=("Helvetica", 12),
+                                  bg="#e0e0e0", command=self.odabir_nivoa)
+        self.dugme_nazad.pack(pady=10)
+
+        if self.hard_mode or self.blind_mode:
+            self.prikazi_sve_karte()
+
+    def prikazi_sve_karte(self):
+        for i, dugme in enumerate(self.dugmad):
+            dugme.config(text=str(self.vrijednosti[i]), state="disabled", bg="#E8F5E9")
+        self.root.after(3000, self.sakrij_karte)
+
+    def sakrij_karte(self):
+        for i, dugme in enumerate(self.dugmad):
+            dugme.config(text=" ", state="normal", bg="#ffffff")
+
+    def okreni_karticu(self, idx):
+        if idx in self.okrenute or self.drugi_izabrani is not None:
+            return
+
+        if self.blind_mode:
+            if self.prvi_izabrani is None:
+                self.prvi_izabrani = idx
+            elif self.prvi_izabrani != idx and self.drugi_izabrani is None:
+                self.drugi_izabrani = idx
+                self.root.after(400, self.provjeri_poklapanje)
+            return
+
+        dugme = self.dugmad[idx]
+        dugme.config(text=str(self.vrijednosti[idx]), state="disabled", disabledforeground="black", bg="#BBDEFB")
+
+        if self.prvi_izabrani is None:
+            self.prvi_izabrani = idx
+        elif self.prvi_izabrani != idx and self.drugi_izabrani is None:
+            self.drugi_izabrani = idx
+            self.root.after(400, self.provjeri_poklapanje)
+
+    def provjeri_poklapanje(self):
+        self.broj_pokusaja += 1
+        self.oznaka_pokusaja.config(text=f"Pokušaji: {self.broj_pokusaja}")
+
+        vrijednost_prve = self.vrijednosti[self.prvi_izabrani]
+        vrijednost_druge = self.vrijednosti[self.drugi_izabrani]
+
+        if vrijednost_prve == vrijednost_druge:
+            self.okrenute.extend([self.prvi_izabrani, self.drugi_izabrani])
+            self.broj_uklopljenih += 1
+
+            if self.blind_mode:
+                self.dugmad[self.prvi_izabrani].config(text=str(vrijednost_prve), state="disabled", bg="#C8E6C9")
+                self.dugmad[self.drugi_izabrani].config(text=str(vrijednost_druge), state="disabled", bg="#C8E6C9")
+
+            if self.broj_uklopljenih == self.ukupan_broj_kartica // 2:
+                messagebox.showinfo("Čestitamo!", f"Pobijedili ste za {self.broj_pokusaja} pokušaja!")
+                self.odabir_nivoa()
+        else:
+            if not self.blind_mode:
+                self.dugmad[self.prvi_izabrani].config(text=" ", state="normal", bg="#ffffff")
+                self.dugmad[self.drugi_izabrani].config(text=" ", state="normal", bg="#ffffff")
+
+        if self.blind_mode and vrijednost_prve != vrijednost_druge:
+            pass  # sve ostaje skriveno
+
+        self.prvi_izabrani = None
+        self.drugi_izabrani = None
+
+    def azuriraj_tajmer(self):
+        if not self.hard_mode:
+            return
+        self.preostalo_vrijeme -= 1
+        if self.oznaka_tajmera:
+            self.oznaka_tajmera.config(text=f"⏱️ Vrijeme: {self.preostalo_vrijeme}s")
+        if self.preostalo_vrijeme == 0:
+            messagebox.showwarning("⏰ Vrijeme isteklo", "Nažalost, isteklo je vrijeme.")
+            self.odabir_nivoa()
+        else:
+            self.root.after(1000, self.azuriraj_tajmer)
+
+    def obrisi_sve(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.geometry("600x700")
+    root.resizable(False, False)
+    igra = IgraPamćenja(root)
+    root.mainloop()
 
